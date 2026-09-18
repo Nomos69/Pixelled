@@ -1,0 +1,140 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Pixelled - Phase 1</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #222; color: #ddd; }
+    #hud { position: absolute; left: 12px; top: 12px; z-index: 10; }
+    canvas { display: block; margin: 0 auto; background: #88b; }
+  </style>
+</head>
+<body>
+  <div id="hud">Connecting...</div>
+  <canvas id="game" width="800" height="600"></canvas>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const hud = document.getElementById('hud');
+
+    // If page was opened via 0.0.0.0 in the address bar, many browsers
+    // can't connect to ws://0.0.0.0 — prefer localhost for the websocket host.
+    const hostname = (location.hostname === '0.0.0.0') ? 'localhost' : location.hostname;
+    const portPart = location.port ? (':' + location.port) : '';
+    const wsUrl = (location.protocol === 'https:' ? 'wss://' : 'ws://') + hostname + portPart + '/ws';
+    console.log('WebSocket URL ->', wsUrl);
+    const ws = new WebSocket(wsUrl);
+
+    let myId = null;
+    const players = {};
+
+    // input state
+    const input = { up: false, down: false, left: false, right: false };
+
+    function sendInput() {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'input', input }));
+      }
+    }
+
+    ws.addEventListener('open', () => {
+      hud.textContent = 'Connected. Waiting for server init...';
+    });
+
+    ws.addEventListener('error', (ev) => {
+      console.error('WebSocket error', ev);
+      hud.textContent = 'WebSocket error — see console for details.';
+    });
+
+    ws.addEventListener('close', (ev) => {
+      console.warn('WebSocket closed', ev);
+      hud.textContent = 'Disconnected from server.';
+    });
+
+    ws.addEventListener('message', (ev) => {
+      let msg = null;
+      try { msg = JSON.parse(ev.data); } catch (e) { return; }
+
+      if (msg.type === 'init') {
+        myId = msg.id;
+        hud.innerHTML = 'You: ' + myId + ' — Use WASD or arrows in multiple tabs to move.';
+      } else if (msg.type === 'state') {
+        // replace local players map
+        const incomingIds = new Set();
+        for (const p of msg.players) {
+          players[p.id] = p;
+          incomingIds.add(p.id);
+        }
+        // remove players not present
+        for (const id in {...players}) {
+          if (!incomingIds.has(id)) delete players[id];
+        }
+      }
+    });
+
+    // draw loop — render at display frame rate, server is authoritative
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // simple grid
+      ctx.fillStyle = '#3a3a3a';
+      for (let x = 0; x < canvas.width; x += 32) {
+        for (let y = 0; y < canvas.height; y += 32) {
+          ctx.fillRect(x + 1, y + 1, 30, 30);
+        }
+      }
+
+      // draw players
+      for (const id in players) {
+        const p = players[id];
+        const color = colorFromId(id);
+        // rectangle
+        ctx.fillStyle = color;
+        ctx.fillRect(p.x - 12, p.y - 16, 24, 32);
+        // name
+        ctx.fillStyle = '#fff';
+        ctx.font = '12px sans-serif';
+        ctx.fillText(id + (id === myId ? ' (you)' : ''), p.x - 16, p.y - 20);
+      }
+
+      requestAnimationFrame(draw);
+    }
+
+    function colorFromId(id) {
+      let h = 0;
+      for (let i = 0; i < id.length; i++) h = (h << 5) - h + id.charCodeAt(i);
+      const r = (h >> 16) & 255; const g = (h >> 8) & 255; const b = h & 255;
+      return `rgb(${Math.abs(r)},${Math.abs(g)},${Math.abs(b)})`;
+    }
+
+    // keyboard
+    window.addEventListener('keydown', (e) => {
+      const prev = { ...input };
+      if (e.key === 'w' || e.key === 'ArrowUp') input.up = true;
+      if (e.key === 's' || e.key === 'ArrowDown') input.down = true;
+      if (e.key === 'a' || e.key === 'ArrowLeft') input.left = true;
+      if (e.key === 'd' || e.key === 'ArrowRight') input.right = true;
+      if (changed(prev, input)) sendInput();
+    });
+
+    window.addEventListener('keyup', (e) => {
+      const prev = { ...input };
+      if (e.key === 'w' || e.key === 'ArrowUp') input.up = false;
+      if (e.key === 's' || e.key === 'ArrowDown') input.down = false;
+      if (e.key === 'a' || e.key === 'ArrowLeft') input.left = false;
+      if (e.key === 'd' || e.key === 'ArrowRight') input.right = false;
+      if (changed(prev, input)) sendInput();
+    });
+
+    function changed(a, b) {
+      return a.up !== b.up || a.down !== b.down || a.left !== b.left || a.right !== b.right;
+    }
+
+    // keep sending input occasionally in case of dropped messages
+    setInterval(() => { if (ws.readyState === WebSocket.OPEN) sendInput(); }, 200);
+
+    draw();
+  </script>
+</body>
+</html>
