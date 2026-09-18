@@ -10,6 +10,9 @@ import time
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Query
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
+STATIC_DIR = Path(__file__).resolve().parent / 'static'
 
 MAX_PLAYERS = 10
 TICK_RATE = 25
@@ -422,11 +425,12 @@ async def lifespan(app):
 
 
 app = FastAPI(title='Pixelled — Phase 4', lifespan=lifespan)
+app.mount('/static', StaticFiles(directory=STATIC_DIR), name='static')
 
 
 @app.get('/')
 async def index():
-    return FileResponse(Path(__file__).with_name('index.html'))
+    return FileResponse(STATIC_DIR / 'index.html')
 
 
 @app.get('/status')

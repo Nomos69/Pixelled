@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pixelled · Multiplayer Campus</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+<main>
+  <header>
+    <div><span class="eyebrow">MULTIPLAYER CAMPUS</span><h1>Pixelled</h1></div>
+    <div class="quick-actions">
+      <button id="openChat" disabled>Chat <kbd>/</kbd></button>
+      <button id="openBoard" disabled>Blackboard <kbd>B</kbd></button>
+    </div>
+  </header>
+  <div class="bar"><span id="status" role="status" aria-live="polite">Choose a name to join.</span><button id="reconnect" hidden>Reconnect</button></div>
+  <section class="campus-panel" aria-label="Campus">
+    <div class="rolebar" aria-label="Player information">
+      <span class="badge location" id="locationLabel">Campus</span>
+      <span class="badge" id="count">0 / 10 online</span>
+      <span class="badge" id="roleLabel">Student</span>
+      <span class="badge" id="flowerCount">Lily: 0 / 1</span>
+      <span class="badge" id="puzzleProgress">Puzzles: 0 / 8</span>
+    </div>
+    <canvas id="game" tabindex="0" width="800" height="576" aria-label="Multiplayer movement area. Use WASD or arrow keys to move."></canvas>
+    <div class="hint-bar"><span class="hint-label">NEXT ACTION</span><p id="hint" role="status" aria-live="polite">Choose your character to explore campus.</p></div>
+  </section>
+  <section class="chat-console" aria-labelledby="chatTitle">
+    <div class="chat-heading"><h2 id="chatTitle">Campus chat</h2><span id="chatHelp">/ to type · Enter to send · Esc to return</span></div>
+    <div id="chatAnnouncements" class="sr-only" role="log" aria-live="polite" aria-label="Campus messages"></div>
+    <form id="chatForm">
+      <label for="chatText" class="chat-prompt" aria-label="Message everyone">/</label>
+      <input id="chatText" maxlength="240" autocomplete="off" required disabled placeholder="Press / to chat with everyone…" aria-describedby="chatHelp">
+      <button id="sendChat" type="submit" disabled>Send</button>
+    </form>
+  </section>
+  <div class="activity-actions" aria-label="Activity actions"><button id="teacherRole" disabled>Become teacher</button><button id="leaveActivity" hidden>Stand up / End lecture</button></div>
+  <footer>
+    <div class="basic-controls"><span><kbd>W A S D</kbd> / <kbd>↑ ← ↓ →</kbd> Move</span><span><kbd>E</kbd> Interact</span><span><kbd>/</kbd> Chat</span></div>
+    <details id="controlsHelp">
+      <summary><span class="show-controls">View all controls</span><span class="hide-controls">Hide controls</span></summary>
+      <div class="controls-grid">
+        <p><kbd>E</kbd> Use computers, sit, or stand up</p>
+        <p><kbd>F</kbd> Pick a nearby lily</p>
+        <p><kbd>G</kbd> Give your lily to a nearby player</p>
+        <p><kbd>B</kbd> Toggle the blackboard</p>
+        <p><kbd>Esc</kbd> Close a pop-up; otherwise leave your seat or podium</p>
+        <p>Your player has a white marker. Approach furniture from below to interact.</p>
+      </div>
+    </details>
+  </footer>
+  <dialog id="joinDialog" aria-labelledby="joinTitle">
+    <h2 id="joinTitle">Welcome to Pixelled</h2>
+    <p>Pick a name and an outfit, then meet everyone on campus.</p>
+    <form id="joinForm">
+      <label for="playerName">Your name</label>
+      <input id="playerName" maxlength="20" required autocomplete="off" placeholder="e.g. Alex">
+      <div class="character-preview">
+        <canvas id="characterPreview" width="56" height="64" aria-label="Preview of your selected character"></canvas>
+        <div class="preview-controls"><p>Your character</p><button id="turnPreview" type="button">Turn ↻</button><button id="walkPreview" type="button" aria-pressed="false">Walk</button></div>
+      </div>
+      <input id="characterChoice" type="hidden" value="0">
+      <fieldset class="outfit-picker"><legend>Outfit color</legend><div class="swatch-grid">
+          <label class="swatch"><input type="radio" name="outfit" value="0" checked><span class="color-chip" style="--outfit: #f4ce58"></span><span>Yellow</span></label>
+          <label class="swatch"><input type="radio" name="outfit" value="1"><span class="color-chip" style="--outfit: #78bfff"></span><span>Blue</span></label>
+          <label class="swatch"><input type="radio" name="outfit" value="2"><span class="color-chip" style="--outfit: #ffcc77"></span><span>Gold</span></label>
+          <label class="swatch"><input type="radio" name="outfit" value="3"><span class="color-chip" style="--outfit: #eb91c8"></span><span>Pink</span></label>
+          <label class="swatch"><input type="radio" name="outfit" value="4"><span class="color-chip" style="--outfit: #a99aff"></span><span>Purple</span></label>
+          <label class="swatch"><input type="radio" name="outfit" value="5"><span class="color-chip" style="--outfit: #66d9cc"></span><span>Teal</span></label>
+          <label class="swatch"><input type="radio" name="outfit" value="6"><span class="color-chip" style="--outfit: #fa9380"></span><span>Coral</span></label>
+          <label class="swatch"><input type="radio" name="outfit" value="7"><span class="color-chip" style="--outfit: #d3db83"></span><span>Lime</span></label>
+          <label class="swatch"><input type="radio" name="outfit" value="8"><span class="color-chip" style="--outfit: #d6b297"></span><span>Tan</span></label>
+          <label class="swatch"><input type="radio" name="outfit" value="9"><span class="color-chip" style="--outfit: #b6c8e0"></span><span>Silver</span></label>
+      </div></fieldset>
+      <label for="styleChoice">Character style</label>
+      <select id="styleChoice"><option value="ponytail">Girl · ponytail and skirt</option><option value="short">Student · short hair and trousers</option></select>
+      <div class="appearance-options">
+        <div><label for="skinChoice">Skin tone</label><select id="skinChoice"><option value="0">Light</option><option value="1">Tan</option><option value="2">Deep</option><option value="3">Warm</option></select></div>
+        <div><label for="hairChoice">Hair color</label><select id="hairChoice"><option value="0">Black</option><option value="1" selected>Brown</option><option value="2">Blue black</option><option value="3">Chestnut</option></select></div>
+      </div>
+      <button id="joinButton" type="submit">Enter campus</button>
+      <p id="joinError" role="status" aria-live="polite"></p>
+    </form>
+  </dialog>
+  <dialog id="boardDialog" aria-labelledby="lectureTitle">
+      <div class="popup-header"><h2 id="lectureTitle">Classroom blackboard</h2><button type="button" id="closeBoard" aria-label="Close blackboard">Close · Esc</button></div>
+      <p id="lectureStatus" role="status">No lecture in progress.</p>
+      <div id="blackboard" aria-live="polite">Waiting for the teacher.</div>
+      <form id="lectureForm" hidden>
+        <p><label for="notes">Lecture notes · up to 600 characters / 10 lines</label></p>
+        <textarea id="notes" maxlength="600" required></textarea>
+        <button type="submit">Publish notes</button>
+        <p>Click a published line to highlight it for everyone. Click it again to clear.</p>
+      </form>
+  </dialog>
+  <dialog id="puzzleDialog" aria-labelledby="puzzleTitle">
+    <h2 id="puzzleTitle">Computer lab</h2>
+    <p id="puzzlePrompt"></p>
+    <pre id="puzzleCode"></pre>
+    <form id="answerForm">
+      <label for="answer">Missing integer</label>
+      <input id="answer" type="text" maxlength="40" autocomplete="off" required>
+      <button id="checkAnswer" type="submit">Check answer</button>
+      <button id="leaveTerminal" type="button">Leave computer</button>
+    </form>
+    <p id="feedback" role="status" aria-live="polite"></p>
+  </dialog>
+</main>
+<script src="/static/js/app.js"></script>
+</body>
+</html>

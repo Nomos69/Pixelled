@@ -22,7 +22,28 @@ disconnect or when a full session has a free place again.
 For another computer on the same LAN, open `http://SERVER_LAN_IP:8000` using the
 host computer's LAN address. Allow port 8000 through the host firewall if needed.
 This is an in-memory local development game: run **one server process / worker**.
-Restarting the server clears the session. Do not open index.html as a local file.
+Restarting the server clears the session. Do not open `static/index.html` as a local file.
+
+## Project structure
+
+```text
+Pixelled/
+├── main.py                 # FastAPI server, game rules, and launch entry point
+├── requirements.txt        # Python dependencies
+├── README.md               # Setup and game documentation
+├── static/
+│   ├── index.html          # Page layout and dialogs
+│   ├── css/styles.css      # Page styling
+│   └── js/app.js           # Canvas rendering and client interactions
+├── tests/                  # Automated Python tests
+├── backups/before-phase1/  # Original prototype files
+└── logs/                   # Local server logs (ignored by Git)
+```
+
+Run the app with `python main.py` from the project folder. The server serves the
+page at `/` and frontend files at `/static/`, using paths relative to `main.py`.
+The `.venv/` environment and Python cache folders are generated locally and
+ignored by Git. To save server output, run `python main.py > logs/server.log 2>&1`.
 
 ## Player names and character selection
 
@@ -47,6 +68,23 @@ Names containing control characters and out-of-range selections are rejected.
 Profile data is tied to the single-use ticket and expires with its reservation.
 Clients omitting these parameters receive a default Student name and slot color.
 Restart an older running Python server before testing names and outfit selection.
+
+## Campus interface
+
+The compact toolbar shows your location, online players, role, lily inventory,
+and puzzle progress. Progress stays visible while interaction hints change in
+the bar directly below the game. Teacher and seating actions sit below the map.
+
+Messages appear in rounded cloud bubbles attached to the speaking character.
+The latest message stays visible for 8–16 seconds depending on its length,
+then fades. Bubbles follow moving players and wrap long text. Old history is
+not replayed when joining, and disconnected players lose their bubbles.
+Use **Chat** or `/` to focus the typing bar below the game. Press Enter to send
+and return to the game; Escape leaves the input and keeps your draft. The slash
+is a prompt, not part of the sent message. Use **Blackboard** or `B` for notes.
+**View all controls** expands the keyboard guide. Outfit colors are labeled
+swatches with a selection border and keyboard arrow-key selection, alongside
+a larger live character preview.
 
 ## Campus graphics
 
@@ -185,11 +223,12 @@ are not included in the puzzle payload.
 
 ## Campus chat and teacher lectures
 
-Chat and the blackboard are hidden until opened, keeping the campus view clear.
+Campus chat appears in character speech bubbles, with a typing bar below the game.
+The blackboard opens in a dialog.
 
 | Key | Action |
 | --- | --- |
-| `/` | Open chat and focus the message box |
+| `/` | Focus the inline chat input |
 | `B` | Open/close the blackboard when not typing |
 | `Esc` | Close the current overlay; in the game, leave the seat or podium |
 | `E` | Interact with a computer, desk, or podium |
@@ -202,8 +241,9 @@ Teacher notes and chat continue to synchronize while the overlays are hidden.
 
 
 **Campus chat** reaches every connected player, including players outside the
-classroom. Press **/** to open chat and focus the message box, then click
-**Send message** or press Enter. Press **Esc** or click Close to return to the game. Typing in chat or the lecture editor does not move your character.
+classroom. Press **/** to focus the chat input, then click **Send** or press Enter.
+Sending returns focus to the game. Press **Esc** to leave the input without
+sending or leaving your seat. Typing in chat or the lecture editor does not move your character.
 Messages carry the sender's server-assigned player ID and role. The server keeps
 the latest 50 messages for this run and limits each player to two messages per
 second, with a maximum of 240 characters per message. New arrivals receive the
