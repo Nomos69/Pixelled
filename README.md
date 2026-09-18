@@ -1,4 +1,4 @@
-# Pixelled — Phase 4
+# Pixelled — Phase 4 delete me
 
 A local 10-player campus RPG prototype using Python, FastAPI, WebSockets, and native
 HTML Canvas. Requires Python 3.10 or newer. No frontend build needed.
