@@ -52,6 +52,38 @@ let maxPlayers = 10;
 const mapCanvas = document.createElement('canvas');
 let campus = null;
 let terminals = [];
+let completedTerminals = new Set();
+let journalVersion = '';
+function updateJournal(you = null) {
+  completedTerminals = new Set(you?.completed_terminals || []);
+  const total = terminals.length || 8;
+  const completed = you?.completed || 0;
+  const version = JSON.stringify([myId, you?.terminal_id, completed, [...completedTerminals], terminals.map(t => [t.id, t.occupant])]);
+  if (version === journalVersion) return;
+  journalVersion = version;
+  document.getElementById('journalCount').textContent = `${completed} / ${total} solved`;
+  const progress = document.getElementById('labProgress');
+  progress.max = total;
+  progress.value = completed;
+  const list = document.getElementById('labChecklist');
+  list.replaceChildren();
+  terminals.forEach((terminal, index) => {
+    const item = document.createElement('li');
+    const done = completedTerminals.has(terminal.id);
+    const state = done ? 'Solved ✓' : terminal.occupant === myId ? 'You are here' : terminal.occupant ? 'In use' : 'Ready';
+    item.textContent = `Computer ${index + 1} · ${state}`;
+    item.classList.toggle('is-complete', done);
+    list.append(item);
+  });
+  const next = terminals.findIndex(t => !completedTerminals.has(t.id) && (!t.occupant || t.occupant === myId));
+  const goal = !you ? 'Join campus to start your lab challenges.'
+    : !Array.isArray(you.completed_terminals) ? 'Restart the Python server to enable the personal checklist.'
+    : completed === total ? 'All lab puzzles solved! Take a break in the courtyard or help a classmate.'
+    : next < 0 ? 'The remaining computers are in use. Explore campus while you wait.'
+    : `Next challenge: Computer ${next + 1} in the upper-left lab. Approach from below and interact.`;
+  const label = document.getElementById('labGoal');
+  if (label.textContent !== goal) label.textContent = goal;
+}
 let lilies = [];
 let activeTerminal = null;
 let desks = [];
@@ -160,6 +192,7 @@ function action(type, extra = {}) {
   if (socket?.readyState === WebSocket.OPEN && myId) socket.send(JSON.stringify({type, ...extra}));
 }
 function updateLab(you) {
+  updateJournal(you);
   if (you.terminal_id && you.puzzle) {
     if (activeTerminal !== you.terminal_id) {
       activeTerminal = you.terminal_id;
@@ -181,7 +214,7 @@ function updateLab(you) {
   }
   const me = players.find(p => p.id === myId);
   document.getElementById('flowerCount').textContent = `Lily: ${you.lily_id ? 1 : 0} / 1`;
-  document.getElementById('puzzleProgress').textContent = `Puzzles: ${you.completed} / 8`;
+  document.getElementById('puzzleProgress').textContent = `Puzzles: ${you.completed} / ${terminals.length || 8}`;
   const target = interactionTarget();
   const prompt = me && ['seated', 'lecturing'].includes(me.state)
     ? (me.state === 'lecturing' ? 'B · Open blackboard · E / Esc · End lecture' : 'E / Esc · Stand up')
@@ -195,16 +228,68 @@ document.getElementById('answerForm').addEventListener('submit', event => {
 document.getElementById('leaveTerminal').addEventListener('click', () => action('leave_terminal'));
 dialog.addEventListener('cancel', event => { event.preventDefault(); action('leave_terminal'); });
 
+const touchControls = document.getElementById('touchControls');
+const toggleTouchControls = document.getElementById('toggleTouchControls');
+const touchPointers = new Map();
+const directionButtons = [...touchControls.querySelectorAll('[data-direction]')];
+function refreshTouchDirections() {
+  for (const button of directionButtons) {
+    button.classList.toggle('is-held', [...touchPointers.values()].includes(button.dataset.direction));
+  }
+}
+function setTouchVisibility(visible) {
+  clearInput();
+  touchControls.hidden = !visible;
+  toggleTouchControls.setAttribute('aria-expanded', String(visible));
+  toggleTouchControls.textContent = `${visible ? 'Hide' : 'Show'} on-screen controls`;
+}
+function setTouchEnabled(enabled) {
+  touchControls.querySelectorAll('button').forEach(button => { button.disabled = !enabled; });
+}
+toggleTouchControls.addEventListener('click', () => setTouchVisibility(touchControls.hidden));
+for (const button of directionButtons) {
+  button.addEventListener('pointerdown', event => {
+    if (event.button !== 0 || button.disabled || !myId || dialog.open || boardDialog.open || joinDialog.open) return;
+    event.preventDefault();
+    canvas.focus({preventScroll: true});
+    button.setPointerCapture(event.pointerId);
+    touchPointers.set(event.pointerId, button.dataset.direction);
+    refreshTouchDirections();
+    sendInput();
+  });
+  const release = event => {
+    if (!touchPointers.delete(event.pointerId)) return;
+    refreshTouchDirections();
+    sendInput();
+  };
+  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) button.addEventListener(type, release);
+  button.addEventListener('contextmenu', event => event.preventDefault());
+}
+touchControls.querySelectorAll('[data-action]').forEach(button => {
+  button.addEventListener('click', () => {
+    if (!myId || dialog.open || boardDialog.open || joinDialog.open) return;
+    returnToGame();
+    action(button.dataset.action);
+  });
+});
+
 function sendInput() {
   if (socket?.readyState !== WebSocket.OPEN || !myId) return;
+  const touching = new Set(touchPointers.values());
   socket.send(JSON.stringify({type: 'input', input: {
-    up: pressed.has('KeyW') || pressed.has('ArrowUp'),
-    down: pressed.has('KeyS') || pressed.has('ArrowDown'),
-    left: pressed.has('KeyA') || pressed.has('ArrowLeft'),
-    right: pressed.has('KeyD') || pressed.has('ArrowRight')
+    up: pressed.has('KeyW') || pressed.has('ArrowUp') || touching.has('up'),
+    down: pressed.has('KeyS') || pressed.has('ArrowDown') || touching.has('down'),
+    left: pressed.has('KeyA') || pressed.has('ArrowLeft') || touching.has('left'),
+    right: pressed.has('KeyD') || pressed.has('ArrowRight') || touching.has('right')
   }}));
 }
-function clearInput() { pressed.clear(); sendInput(); }
+function clearInput() {
+  pressed.clear();
+  touchPointers.clear();
+  refreshTouchDirections();
+  sendInput();
+}
+setTouchVisibility(window.matchMedia('(any-pointer: coarse)').matches);
 
 async function connect() {
   if (connecting || !identity) return;
@@ -216,7 +301,8 @@ async function connect() {
   myId = null;
   players = [];
   motion.clear();
-  pressed.clear();
+  clearInput();
+  setTouchEnabled(false);
   statusLabel.textContent = 'Joining the local session…';
   try {
     if (!['http:', 'https:'].includes(location.protocol)) {
@@ -232,6 +318,7 @@ async function connect() {
       const message = JSON.parse(event.data);
       if (message.type === 'init') {
         myId = message.id;
+        setTouchEnabled(true);
         lastChatId = null;
         speechBubbles.clear();
         openChat.disabled = false;
@@ -274,6 +361,7 @@ async function connect() {
       joinButton.disabled = false;
       if (joinDialog.open) joinError.textContent = event.reason || 'Connection lost. Try joining again.';
       myId = null;
+      setTouchEnabled(false);
       openChat.disabled = true;
       chatText.disabled = true;
       openBoard.disabled = true;
@@ -289,6 +377,7 @@ async function connect() {
       document.getElementById('locationLabel').textContent = 'Offline';
       activeTerminal = null;
       terminals = [];
+      updateJournal();
       desks = [];
       benches = [];
       lecture = {notes: '', highlight: -1, teacher_id: null, active: null};
@@ -633,7 +722,7 @@ function interactionTarget() {
     {x: 592, y: 112, kind: 'podium', occupant: lecture.active, label: me.role === 'teacher' ? 'E · Teach' : 'Teacher podium'},
     ...desks.map(t => ({...t, kind: 'desk', label: 'E · Sit'})),
     ...benches.map(t => ({...t, kind: 'bench', label: 'E · Sit'})),
-    ...terminals.map(t => ({...t, kind: 'terminal', label: 'E · Code'}))
+    ...terminals.map((t, index) => ({...t, kind: 'terminal', label: `E · Computer ${index + 1}${completedTerminals.has(t.id) ? ' · Solved' : ' · Code'}`}))
   );
   return objects.find(t => ['lily', 'player'].includes(t.kind) ? nearItem(t) : Math.abs(me.x - t.x) <= 20 && me.y - t.y >= 28 && me.y - t.y <= 56);
 }
@@ -763,14 +852,20 @@ function draw() {
   ctx.textAlign = 'center';
   ctx.font = '11px monospace';
   for (const terminal of terminals) {
+    const done = completedTerminals.has(terminal.id);
+    ctx.fillStyle = '#202a24';
+    ctx.fillRect(terminal.x - 21, terminal.y - 27, 42, 12);
+    ctx.fillStyle = done ? '#d1edbd' : '#e6eae5';
+    ctx.font = '9px monospace';
+    ctx.fillText(`${terminals.indexOf(terminal) + 1}${done ? ' ✓' : ''}`, terminal.x, terminal.y - 18);
     ctx.fillStyle = terminal.occupant ? '#ffd178' : '#a3e3a1';
     ctx.fillRect(terminal.x + 9, terminal.y - 12, 4, 4);
     if (terminal.occupant) {
       ctx.fillStyle = '#202a24';
-      ctx.fillRect(terminal.x - 27, terminal.y - 27, 54, 12);
+      ctx.fillRect(terminal.x - 27, terminal.y - 40, 54, 12);
       ctx.fillStyle = '#ffd178';
       ctx.font = '9px monospace';
-      ctx.fillText('IN USE', terminal.x, terminal.y - 18);
+      ctx.fillText('IN USE', terminal.x, terminal.y - 31);
     }
   }
   // Shared board preview is painted on the classroom wall.

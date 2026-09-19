@@ -57,3 +57,18 @@ class TerminalTests(unittest.TestCase):
         self.assertEqual(len(main.TERMINALS), 8)
         for terminal in main.TERMINALS:
             self.assertTrue(main.can_stand(terminal['x'], terminal['y'] + 32))
+
+    def test_checklist_tracks_only_own_solved_computers_after_leaving(self):
+        a, b = main.players.values()
+        main.handle_action(a, {'type': 'interact'})
+        main.handle_action(a, {'type': 'submit_answer', 'answer': '3'})
+        self.assertEqual(main.private_state(a)['completed_terminals'], [])
+        main.handle_action(a, {'type': 'submit_answer', 'answer': '4'})
+        main.release_terminal(a)
+        state = main.private_state(a)
+        self.assertEqual(state['completed_terminals'], [self.terminal['id']])
+        self.assertEqual(state['completed'], 1)
+        self.assertIsNone(state['puzzle'])
+        self.assertEqual(main.private_state(b)['completed_terminals'], [])
+        state['completed_terminals'].clear()
+        self.assertEqual(main.private_state(a)['completed'], 1)

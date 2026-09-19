@@ -336,6 +336,7 @@ def private_state(player):
         task = PUZZLES[next(i for i, t in enumerate(TERMINALS) if t['id'] == terminal_id) % len(PUZZLES)]
         puzzle = {key: task[key] for key in ('title', 'prompt', 'code')}
     return {'terminal_id': terminal_id, 'puzzle': puzzle, 'feedback': player['feedback'],
+            'completed_terminals': [t['id'] for t in TERMINALS if t['id'] in player['solved']],
             'solved': terminal_id in player['solved'], 'completed': len(player['solved']), 'role': player.get('role', 'student'),
             'desk_id': player.get('desk_id'), 'bench_id': player.get('bench_id'), 'lily_id': player.get('lily_id')}
 

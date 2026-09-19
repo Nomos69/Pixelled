@@ -71,6 +71,22 @@ Restart an older running Python server before testing names and outfit selection
 
 ## Campus interface
 
+Expand **Lab checklist** to see your completed computers, available challenges,
+and a suggested next computer. Numbered markers on the lab computers match the
+checklist; a check mark means you solved that computer. Finishing every puzzle
+shows a completion message. Progress comes from the server and is personal to
+your current connection; reconnecting resets it. Restart the Python server
+after this update to enable the new checklist state.
+
+Touch devices automatically show a direction pad below the campus. Hold an arrow
+to move, or hold two for diagonal movement. Use **Interact / Sit**, **Pick lily**,
+and **Give lily** for the same actions as E, F, and G. Existing Chat, Blackboard,
+and Stand up buttons remain available. **Show on-screen controls** in the footer
+also enables these controls on desktop. Releasing or cancelling a touch, hiding
+the controls, switching apps, opening a dialog, or focusing chat stops held input.
+The controls are disabled until connected; the server still validates movement
+and every interaction.
+
 The compact toolbar shows your location, online players, role, lily inventory,
 and puzzle progress. Progress stays visible while interaction hints change in
 the bar directly below the game. Teacher and seating actions sit below the map.
@@ -290,7 +306,13 @@ and highlighted line. Incoming WebSocket messages are capped at 4096 bytes.
 
 ```bash
 python -m unittest discover -s tests -v
+node --test tests/test_touch_controls.cjs
 ```
+
+The client input tests cover simultaneous touch directions, independent pointer
+release, keyboard/touch overlap, focus and visibility cleanup, modal/offline
+guards, and action messages using a simulated DOM. Physical phone behavior and
+cross-device LAN play still need a manual check.
 
 The six map tests cover safe spawns, reachable walkable tiles, full-body collision,
 wall sliding, large movement steps, room entrances, desks, and corner movement.

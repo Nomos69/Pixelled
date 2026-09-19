@@ -27,6 +27,28 @@
     <canvas id="game" tabindex="0" width="800" height="576" aria-label="Multiplayer movement area. Use WASD or arrow keys to move."></canvas>
     <div class="hint-bar"><span class="hint-label">NEXT ACTION</span><p id="hint" role="status" aria-live="polite">Choose your character to explore campus.</p></div>
   </section>
+  <section id="touchControls" class="touch-controls" aria-label="On-screen game controls" hidden>
+    <div class="direction-pad" role="group" aria-label="Hold to move">
+      <button type="button" data-direction="up" aria-label="Move up" disabled>↑</button>
+      <button type="button" data-direction="left" aria-label="Move left" disabled>←</button>
+      <span aria-hidden="true">✦</span>
+      <button type="button" data-direction="right" aria-label="Move right" disabled>→</button>
+      <button type="button" data-direction="down" aria-label="Move down" disabled>↓</button>
+    </div>
+    <div class="touch-actions">
+      <span>Hold arrows to move</span>
+      <button type="button" data-action="interact" disabled>Interact / Sit</button>
+      <button type="button" data-action="pick_lily" disabled>Pick lily</button>
+      <button type="button" data-action="give_lily" disabled>Give lily</button>
+    </div>
+  </section>
+  <details id="labJournal" class="lab-journal">
+    <summary>Lab checklist <span id="journalCount">0 / 8 solved</span></summary>
+    <progress id="labProgress" value="0" max="8" aria-label="Your solved lab puzzles"></progress>
+    <p id="labGoal" role="status" aria-live="polite">Join campus to start your lab challenges.</p>
+    <ol id="labChecklist" aria-label="Computer completion status"></ol>
+    <p class="journal-note">Your progress for this connection. Reconnecting starts a new run.</p>
+  </details>
   <section class="chat-console" aria-labelledby="chatTitle">
     <div class="chat-heading"><h2 id="chatTitle">Campus chat</h2><span id="chatHelp">/ to type · Enter to send · Esc to return</span></div>
     <div id="chatAnnouncements" class="sr-only" role="log" aria-live="polite" aria-label="Campus messages"></div>
@@ -38,6 +60,7 @@
   </section>
   <div class="activity-actions" aria-label="Activity actions"><button id="teacherRole" disabled>Become teacher</button><button id="leaveActivity" hidden>Stand up / End lecture</button></div>
   <footer>
+    <button id="toggleTouchControls" type="button" aria-controls="touchControls" aria-expanded="false">Show on-screen controls</button>
     <div class="basic-controls"><span><kbd>W A S D</kbd> / <kbd>↑ ← ↓ →</kbd> Move</span><span><kbd>E</kbd> Interact</span><span><kbd>/</kbd> Chat</span></div>
     <details id="controlsHelp">
       <summary><span class="show-controls">View all controls</span><span class="hide-controls">Hide controls</span></summary>
